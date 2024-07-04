@@ -1,8 +1,41 @@
 const router = require("express").Router();
 const { connectClient } = require("../db/postgres");
 const todo = require("../src/Models/todoModel");
+const excludeRoutes = ["/home"]
+
+router.use((req, res, next) => {
+    const pathWithoutEndSlash = req.path.endsWith("/")
+    ? req.path.slice(0,-1)
+    : req.path
+
+    if(excludeRoutes.includes(pathWithoutEndSlash)){
+        next()
+        return
+    }
+
+    if (req.user) {
+        next();
+    } else {
+        req.session.returnTo = req.originalUrl;
+        res.redirect('/auth/signIn');
+    }
+})
 
 // Index
+router.get("/home",async (req,res) =>{
+    try {
+        const result = await todo.findAll({
+            order: [
+                ['id', 'ASC']
+            ]
+        });
+        res.render('home', { user: req.user, todos: result});
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+    res.send('HOLA');
+})
+
 router.get("/", async (req, res) => {
     const client = await connectClient();
     try {
